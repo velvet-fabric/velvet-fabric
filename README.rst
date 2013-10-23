@@ -12,7 +12,7 @@ Velvet Fabric
         :target: https://crate.io/packages/velvet_fabric?version=latest
 
 
-Automatize sysadmin tasks, elegantly adaptable and scalable, Supports for dependency installing, environment profilling, Django+uWsgi+Nginx deployment, or adapt your own.
+Automatize sysadmin tasks, elegantly adaptable and scalable. Supports for dependency installing, environment provisioning, Django+uWsgi+Nginx deployment, or adapt your own
 
 * Free software: BSD license
 * Documentation: http://velvet_fabric.rtfd.org.
