@@ -31,9 +31,14 @@ def create_folder():
 
 @task
 def make_virtualenv():
-    run('pip install virtualenvwrapper')
-    run('source /usr/local/bin/virtualenvwrapper.sh')
-    run('mkvirtualev {}'.format(PROJECT_NAME))
+    sudo('pip install virtualenvwrapper')
+    run('source /usr/local/bin/virtualenvwrapper.sh && mkvirtualenv {}'.format(PROJECT_NAME))
+
+
+@task
+def chown(user='www-data'):
+    with virtualenv():
+        sudo('chown -R {} .'.format(user))
 
 
 @task
@@ -52,7 +57,7 @@ def upgrade_requirements():
     """
     Upgrade requirements
     """
-    install('--upgrade')
+    install_requirements('--upgrade')
 
 
 def get_os():
@@ -64,19 +69,17 @@ def get_os():
     return env.os
 
 
-def get_deps():
-    return list(
-        set(env.dependencies['base']) | set(env.dependencies[get_os()]) - set(env.dependencies['exclude'])
-    )
-
 
 @task
-def install_dependencies():
+def install_dependencies(template='{} {}'):
     """
     Install environment dependencies
     """
-    print(' '.join(get_deps()))
-    sudo(env.installer + ' '.join(get_deps()))
+    with cd(env.directory):
+        deps = set(env.dependencies['base']) | set(env.dependencies[get_os()])
+        deps.discard(*env.dependencies['exclude'])
+        import ipdb; ipdb.set_trace();
+        sudo(template.format(join(deps)))
 
 
 @task
@@ -84,4 +87,4 @@ def upgrade_dependencies():
     """
     Upgrade environment dependencies
     """
-    run(env.installer + ' --upgrade ' + ' '.join(get_deps()))
+    install_dependencies('{} --upgrade {}')

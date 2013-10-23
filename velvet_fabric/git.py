@@ -1,6 +1,15 @@
 from fabric.api import *
 from fabric.utils import error
+from fabric.colors import green
+from . import PROJECT_NAME, GIT_ROOT
 from .env import virtualenv
+
+
+@task
+def clone():
+    with virtualenv():
+        sudo('cd .. && git clone {} {}'.format(GIT_ROOT, PROJECT_NAME))
+
 
 @task
 def revert(revision):

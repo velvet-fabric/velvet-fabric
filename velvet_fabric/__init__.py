@@ -2,8 +2,19 @@ import os
 import fabfile
 from os.path import join
 
-PROJECT_DIR = getattr(fabfile, 'PROJECT_DIR', None)
-PROJECT_NAME = getattr(fabfile, 'PROJECT_NAME', None)
+PROJECT_DIR = getattr(fabfile, 'PROJECT_DIR')
+PROJECT_NAME = getattr(fabfile, 'PROJECT_NAME')
+
+GIT_ROOT = getattr(fabfile, 'GIT_ROOT')
+
+WSGI_FILEPATH = getattr(fabfile,
+                        'WSGI_FILEPATH',
+                        '{}deploy/wsgi/{}.ini'.format(PROJECT_DIR, PROJECT_NAME))
+
+
+NGINX_FILEPATH = getattr(fabfile,
+                         'NGINX_FILEPATH',
+                         '{}deploy/nginx/{}'.format(PROJECT_DIR, PROJECT_NAME))
 
 dependency_template = {
     'base': [],
@@ -14,9 +25,9 @@ DEVELOPMENT_DEPENDENCIES = dependency_template.copy()
 STAGING_DEPENDENCIES = dependency_template.copy()
 PRODUCTION_DEPENDENCIES = dependency_template.copy()
 
-DEVELOPMENT_DEPENDENCIES.update(getattr(fabfile, 'DEVELOPMENT_DEPENDECIES', {}))
-STAGING_DEPENDENCIES.update(getattr(fabfile, 'STAGING_DEPENDECIES', {}))
-PRODUCTION_DEPENDENCIES.update(getattr(fabfile, 'PRODUCTION_DEPENDECIES', {}))
+DEVELOPMENT_DEPENDENCIES.update(getattr(fabfile, 'DEVELOPMENT_DEPENDENCIES', {}))
+STAGING_DEPENDENCIES.update(getattr(fabfile, 'STAGING_DEPENDENCIES', {}))
+PRODUCTION_DEPENDENCIES.update(getattr(fabfile, 'PRODUCTION_DEPENDENCIES', {}))
 
 ENVIRONMENT = {
     'DEVELOPMENT': {
@@ -39,10 +50,10 @@ ENVIRONMENT = {
         'settings_module': '{}.settings_staging'.format(PROJECT_NAME),
         'activate': '/bin/bash {}'.format(join('~/.virtualenvs', PROJECT_NAME, 'bin/activate')),
         'dependencies': STAGING_DEPENDENCIES,
-        'installer': 'apt-get -y install'
+        'installer': 'apt-get -y --threads=5 {args} install {deps}'
     },
     'PRODUCTION': {
-        'user': 'www-data',
+        'user': 'root',
         'hosts': ('{}.com'.format(PROJECT_NAME)),
         'directory': join('/var/www/', PROJECT_NAME),
         'environment': 'production',
@@ -50,7 +61,7 @@ ENVIRONMENT = {
         'settings_module': '{}.settings_production'.format(PROJECT_NAME),
         'activate': '/bin/bash {}'.format(join('~/.virtualenvs', PROJECT_NAME, 'bin/activate')),
         'dependencies': PRODUCTION_DEPENDENCIES,
-        'installer': 'apt-get -y install'
+        'installer': 'apt-get -y --threads=5 {args} install {deps}'
     }
 }
 
@@ -60,4 +71,4 @@ def update_environment(new_env):
         if k in ENVIRONMENT:
             ENVIRONMENT[k].update(v)
 
-update_environment(getattr(fabfile, 'ENVIRONMENT'))
+update_environment(getattr(fabfile, 'ENVIRONMENT', ENVIRONMENT))

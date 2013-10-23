@@ -1,21 +1,12 @@
-import fabfile
+
 from fabric.api import *
-from . import PROJECT_DIR, PROJECT_NAME, env as nv
-
-WSGI_FILEPATH = getattr(fabfile,
-                        'WSGI_FILEPATH',
-                        '{}deploy/wsgi/{}.ini'.format(PROJECT_DIR, PROJECT_NAME))
-
-
-NGINX_FILEPATH = getattr(fabfile,
-                         'NGINX_FILEPATH',
-                         '{}deploy/nginx/{}'.format(PROJECT_DIR, PROJECT_NAME))
+from . import PROJECT_NAME, NGINX_FILEPATH, WSGI_FILEPATH, env as nv, git
 
 
 @task
 def wsgi_link():
     with env.virtualenv():
-        run('ln -s {} /etc/wsgi/{}'.format(NGINX_FILEPATH, PROJECT_NAME))
+        run('ln -s {} /etc/wsgi/{}'.format(WSGI_FILEPATH, PROJECT_NAME))
 
 
 @task
@@ -28,12 +19,16 @@ def nginx_link():
 def provisioning():
     execute(nv.create_folder)
     with cd(env.directory):
+        execute(nv.chown, env.user)
         execute(nv.authenticate)
-        execute(nv.install_dependencies)
+        execute(nv.install_dependencies, env.installer)
         execute(nv.make_virtualenv)
+        execute(git.clone)
         execute(nv.install_requirements)
+        execute(nv.chown, 'www-data')
         execute(nginx_link)
         execute(wsgi_link)
+        execute(django.init)
 
 
 @task
