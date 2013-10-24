@@ -1,9 +1,6 @@
-import os
-from contextlib import contextmanager
 from fabric.api import *
 from fabric.colors import green, red
 from fabric.utils import error
-from .env import virtualenv
 
 
 def is_schema_misconfigured(schema={}):
@@ -13,6 +10,7 @@ def is_schema_misconfigured(schema={}):
             return True
 
     return False
+
 
 def create_mysql_db(schema, db_password=None):
     if is_schema_misconfigured(schema):
@@ -34,15 +32,6 @@ def create_mysql_db(schema, db_password=None):
     print(green('schema for mysql is ready'))
 
 
-@contextmanager
-def credentials():
-    if 'Darwin' is not run('uname -s'):
-        with prefix('sudo -u postgres'):
-            yield
-    else:
-        yield
-
-
 def create_postgres_db(schema):
     """
     Create a PostgreSQL db and user
@@ -50,15 +39,17 @@ def create_postgres_db(schema):
     if is_schema_misconfigured(schema):
         return
 
-    with credentials():
-        actions = (
-            "drop database if exists {NAME}",
-            "drop role if exists {USER}",
-            "create user {USER} with password '{PASSWORD}'",
-            "create database {NAME} with owner {USER} encoding='utf8' template template0",
-        )
-        for step in actions:
-            run('psql -d postgres -c "{}"'.format(step).format(**schema))
+    db_command = 'sudo -u postgres psql' if 'Darwin' is not run('uname -s') \
+                 else 'psql'
+
+    actions = (
+        "drop database if exists {NAME}",
+        "drop role if exists {USER}",
+        "create user {USER} with password '{PASSWORD}'",
+        "create database {NAME} with owner {USER} encoding='utf8' template template0",
+    )
+    for step in actions:
+        run('{} -d postgres -c "{}"'.format(db_command, step).format(**schema))
 
     print(green('Schema for Postgres is ready'))
 
@@ -72,7 +63,7 @@ def activate_postgis():
     with credentials():
         actions = (
             'CREATE EXTENSION postgis',  # Enable PostGIS (includes raster)
-            'CREATE EXTENSION postgis_topology',  #  Enable Topology
+            'CREATE EXTENSION postgis_topology',  # Enable Topology
             'CREATE EXTENSION fuzzystrmatch',  # fuzzy matching needed for Tiger
             'CREATE EXTENSION postgis_tiger_geocoder',  # Enable US Tiger Geocoder
         )
@@ -105,4 +96,3 @@ def rebuild_postgres_db(user=None, db=None, sync=0):
     create_postgres_db(user, db)
     if sync == '1':
         syncdb()
-

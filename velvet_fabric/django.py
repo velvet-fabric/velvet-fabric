@@ -1,20 +1,15 @@
-import os
-
+import sys
+import imp
 from fabric.api import *
 from fabric.colors import green
-from .env import virtualenv
+
+from .server import virtualenv
 from .db import create_postgres_db, create_mysql_db
+from . import PROJECT_NAME, PROJECT_PATH
 
 
 @task
 def init():
-    """
-    Start the application to run.
-    """
-
-    #set_dependencies()
-    if env.environment is not 'development':
-        git_update()
     create_schemas()
     syncdb()
 
@@ -26,9 +21,18 @@ def init():
 
 def get_schemas():
     with virtualenv():
-        os.environ.setdefault("DJANGO_SETTINGS_MODULE", env.settings_module)
-        from django.conf.settings import DATABASES
-        return DATABASES
+        # print env.settings_module
+
+        # # since it's dynamic, it's a fiasco the fabric propousal
+        # os.environ.setdefault("DJANGO_SETTINGS_MODULE", PROJECT_NAME+'.'+env.settings_module)
+        # django.settings_module(PROJECT_NAME+'.'+env.settings_module)
+        # from django.conf import settings
+
+        sys.path.append(PROJECT_PATH+'/'+PROJECT_NAME)
+        fp, pathname, description = imp.find_module(env.settings_module)
+        settings = imp.load_module(env.settings_module, fp, pathname, description)
+
+        return settings.DATABASES
 
 
 @task
@@ -45,7 +49,7 @@ def create_schemas():
 
 @task
 def create_schema(name):
-    schema = get_schemas()['name']
+    schema = get_schemas()[name]
 
     if 'sqlite' in schema['ENGINE']:
         print(green('schema for sqlite is ready'))

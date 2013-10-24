@@ -2,13 +2,13 @@ from fabric.api import *
 from fabric.utils import error
 from fabric.colors import green
 from . import PROJECT_NAME, GIT_ROOT
-from .env import virtualenv
+from .server import virtualenv
 
 
 @task
-def clone():
+def clone(url=GIT_ROOT, name=PROJECT_NAME):
     with virtualenv():
-        sudo('cd .. && git clone {} {}'.format(GIT_ROOT, PROJECT_NAME))
+        sudo('cd .. && git clone {} {}'.format(url, name))
 
 
 @task
@@ -24,7 +24,7 @@ def revert(revision):
 
 
 @task
-def update(branch='master'):
+def pull(branch='master'):
     if env.environment == 'production' and branch is not 'master':
         branch = 'master'
         error('Ignoring non master branch in production')
