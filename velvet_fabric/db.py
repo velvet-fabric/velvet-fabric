@@ -1,98 +1,144 @@
 from fabric.api import *
-from fabric.colors import green, red
-from fabric.utils import error
+from . import MYSQL_RUN, PSQL_RUN, check
 
 
-def is_schema_misconfigured(schema={}):
-    for i in ['ENGINE', 'NAME', 'USER', 'PASSWORD', 'HOST', 'PORT']:
-        if not i in schema or schema[i] is None:
-            error('schema[{}] misconfigured'.format(i))
-            return True
-
-    return False
-
-
-def create_mysql_db(schema, db_password=None):
-    if is_schema_misconfigured(schema):
-        return
-
-    schema['HOST'] == 'localhost' if schema['HOST'] == '' else schema['HOST']
-    schema['PORT'] == ':'+schema['PORT'] if schema['PORT'] is not '' else ''
-    if db_password is None:
-        db_password = raw_input('Enter mysql root password:')
-
-    actions = [
-        "CREATE DATABASE IF NOT EXISTS {NAME}",
-        "GRANT ALL PRIVILEGES ON {NAME}.* TO '{USER}'@'{HOST}{PORT}' IDENTIFIED BY '{PASSWORD}'",
-    ]
-    bash = "echo \"{}\" | mysql -u root -p{mysql_password}".format("; ".join(actions), mysql_password=db_password)
-
-    run(bash.format(**schema))
-
-    print(green('schema for mysql is ready'))
-
-
-def create_postgres_db(schema):
+@task
+def mysql_run(actions=None, format_dict=None, db_password=None, command=MYSQL_RUN):
     """
-    Create a PostgreSQL db and user
+    Run MySQL commands
     """
-    if is_schema_misconfigured(schema):
-        return
+    actions = check(actions, 'actions: A iterable of commands to perform.')
+    format_dict = check(format_dict, 'format_dict: the dict for the format translations.')
+    db_password = check(db_password, 'db_password: The mysql password.')
 
-    db_command = 'sudo -u postgres psql' if 'Darwin' is not run('uname -s') \
-                 else 'psql'
+    bash = command.format(actions='; '.join(actions), db_password=db_password)
+    if format_dict:
+        bash = bash.format(**format_dict)
+    run(bash)
 
-    actions = (
-        "drop database if exists {NAME}",
-        "drop role if exists {USER}",
-        "create user {USER} with password '{PASSWORD}'",
-        "create database {NAME} with owner {USER} encoding='utf8' template template0",
-    )
+
+@task
+def mysql_create(name=None, user=None, password=None, host=None,
+                    db_password=None, port=''):
+    """
+    Create a MySQL db and user.
+    """
+    name = check(name, 'name: the database name to create.')
+    user = check(user, 'user: the user to grant privileges')
+    password = check(password, 'password: user\'s password')
+    host = check(host, 'host: machine ', default='localhost')
+    db_password = check(db_password, 'db_password: mysql password.')
+    port == ':'+port if port is not '' else ''
+
+    mysql_run((
+        "CREATE DATABASE IF NOT EXISTS {name}",
+        "GRANT ALL PRIVILEGES ON {name}.* TO '{user}'@'{host}{port}' IDENTIFIED BY '{password}'",
+    ), {'name': name, 'user': user, 'password': password, 'host': host,
+        'port': port},  db_password=db_password)
+
+
+@task
+def mysql_drop(name=None, user=None, db_password=None):
+    """
+    Create a MySQL db and user.
+    """
+    name = check(name, 'name: the database name to delete.')
+    user = check(user, 'user: the user to remove.')
+    password = check(password, 'password: user\'s password')
+    host = check(host, 'host: machine ', default='localhost')
+    db_password = check(db_password, 'db_password: mysql password.')
+    port == ':'+port if port is not '' else ''
+
+    mysql_run((
+        "DROP DATABASE IF EXISTS {name}",
+        "DROP USER {user}",
+    ), {'name': name, 'user': user, 'password': password, 'host': host,
+        'port': port},  db_password=db_password)
+
+
+@task
+def mysql_rebuild(name=None, user=None, password=None, host=None,
+                     db_password=None, port=''):
+    """
+    Drop and create MySQL db and user.
+    """
+    name = check(name, 'name: the database name to create.')
+    user = check(user, 'user: the user to grant privileges')
+    password = check(password, 'password: user\'s password')
+    host = check(host, 'host: machine ', 'mysql_host', default='localhost')
+    db_password = check(db_password, 'db_password: mysql password.')
+    port == ':'+port if port is not '' else ''
+
+    drop_postgres_db(name=name, user=user, db_password=db_password)
+    create_postgres_db(name=name, user=user, password=password, host=host,
+                       db_password=db_password, port=port)
+
+
+@task
+def postgres_run(actions=None, format_dict=None, command=PSQL_RUN):
+    """
+    Run PostgreSQL commands.
+    """
+    actions = check(actions, 'actions:')
+    format_dict = check(format_dict, 'format_dict:')
+
+    psql = 'sudo -u postgres psql' if 'Darwin' is not run('uname -s') else 'psql'
     for step in actions:
-        run('{} -d postgres -c "{}"'.format(db_command, step).format(**schema))
-
-    print(green('Schema for Postgres is ready'))
-
-
-@task
-def activate_postgis():
-    """
-    Create a PostGIS extension for postgres
-    """
-
-    with credentials():
-        actions = (
-            'CREATE EXTENSION postgis',  # Enable PostGIS (includes raster)
-            'CREATE EXTENSION postgis_topology',  # Enable Topology
-            'CREATE EXTENSION fuzzystrmatch',  # fuzzy matching needed for Tiger
-            'CREATE EXTENSION postgis_tiger_geocoder',  # Enable US Tiger Geocoder
-        )
-        for step in actions:
-            run('psql -d postgres -c "{}"'.format(step))
-
-    print(green('PostGIS is ready'))
+        bash = command.format(psql=psql, step=step)
+        if format_dict:
+            bash = bash.format(**format_dict)
+        run(bash)
 
 
 @task
-def drop_postgres_db(user=None, db=None):
+def postgres_create(name=None, user=None, password=None):
     """
-    Drop PostgreSQL db
+    Create a PostgreSQL db and user.
     """
-    if user is None or db is None:
-        print(red('Please, provide dbname and user'))
-        return
-    run('dropdb {0}'.format(db, user))
+    name = check(name, 'name: The dabatase name to create.')
+    user = check(user, 'user: the user to grant privileges.')
+    password = check(password, 'password: the user\'s password')
+
+    postgres_run((
+        "create user {user} with password '{password}'",
+        "create database {name} with owner {user} template template0",
+    ), {'name': name, 'user': user, 'password': password})
 
 
 @task
-def rebuild_postgres_db(user=None, db=None, sync=0):
+def postgres_drop(name=None, user=None):
     """
-    Drop and create a PostgreSQL db
+    Drop PostgreSQL db and user.
     """
-    if user is None or db is None:
-        print(red('Please, provide dbname and user'))
-        return
-    drop_postgres_db(user, db)
-    create_postgres_db(user, db)
-    if sync == '1':
-        syncdb()
+    name = check(name, 'name: The dabatase name to create.')
+    user = check(user, 'user: the user to grant privileges.')
+
+    i_postgres_run((
+        "drop database if exists {name}",
+        "drop role if exists {user}"
+    ), {'name': name, 'user': user})
+
+
+@task
+def postgres_rebuild(name=None, user=None):
+    """
+    Drop and create a PostgreSQL db and user.
+    """
+    name = check(name, 'name: The dabatase name to create.')
+    user = check(user, 'user: the user to grant privileges.')
+
+    drop_postgres_db(name=name, user=user)
+    create_postgres_db(name=name, user=user, password=password)
+
+
+@task
+def postgres_activate_postgis():
+    """
+    Create a PostGIS extension for postgres.
+    """
+    postgres_run((
+        'CREATE EXTENSION postgis',  # Enable PostGIS (includes raster)
+        'CREATE EXTENSION postgis_topology',  # Enable Topology
+        'CREATE EXTENSION fuzzystrmatch',  # fuzzy matching needed for Tiger
+        'CREATE EXTENSION postgis_tiger_geocoder',  # Enable US Tiger Geocoder
+    ))

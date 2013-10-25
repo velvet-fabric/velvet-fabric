@@ -1,12 +1,14 @@
 from fabric.api import *
 from fabric.utils import error
 from fabric.colors import green
-from . import PROJECT_NAME, GIT_ROOT
 from .server import virtualenv
+from . import check
 
 
 @task
-def clone(url=GIT_ROOT, name=PROJECT_NAME):
+def clone(url=None, name=None):
+    url = check(url, 'url: Repository url.')
+    name = check(name, 'name: Dir name.')
     with virtualenv():
         sudo('cd .. && git clone {} {}'.format(url, name))
 
@@ -14,13 +16,12 @@ def clone(url=GIT_ROOT, name=PROJECT_NAME):
 @task
 def revert(revision):
     """
-    Reverts application to selected revision, updates submodules and restarts servers.
+    Reverts application to selected revision.
     Usage: fab prod revert:ae7b9acb96c3fea00ab855952071570279b5d978
     """
     with virtualenv():
         run('git checkout {}'.format(revision))
         run('git submodule update')
-        sudo('initctl reload uwsgi_cms', shell=False)
 
 
 @task

@@ -1,32 +1,22 @@
 import os
 import fabfile
 from os.path import join
+from fabric.operations import prompt
 
 PROJECT_PATH = getattr(fabfile, 'PROJECT_PATH')
 PROJECT_NAME = getattr(fabfile, 'PROJECT_NAME')
+MYSQL_RUN = getattr(fabfile, 'MYSQL_RUN',
+                    'echo "{actions}" | mysql -u root -p{db_password}')
+PSQL_RUN = getattr(fabfile, 'PSQL_RUN',
+                   '{psql} -d postgres -c "{step}"')
+WRAPPER_PATH = getattr(fabfile, 'WRAPPER_PATH',
+                       'source /usr/local/bin/virtualenvwrapper.sh')
 
-GIT_ROOT = getattr(fabfile, 'GIT_ROOT')
+SED_RUN = getattr(fabfile, 'SED_RUN', "sed -i 's/{query}/{replace}/' {file_path}")
+TAIL_RUN = getattr(fabfile, 'TAIL_RUN', 'tail -f {file_path}')
+PIP_RUN = getattr(fabfile, 'PIP_RUN', 'pip install {args} -r {requirements}')
 
-WSGI_LINK = getattr(fabfile, 'WSGI_LINK',
-                    '/etc/uwsgi/apps-enabled/{}'.format(PROJECT_NAME))
-WSGI_FILEPATH = getattr(fabfile, 'WSGI_FILEPATH', 'deploy/wsgi.ini')
-
-
-NGINX_LINK = getattr(fabfile, 'NGINX_LINK',
-                     '/etc/nginx/sites-enabled/{}'.format(PROJECT_NAME))
-NGINX_FILEPATH = getattr(fabfile, 'NGINX_FILEPATH', 'deploy/nginx.conf')
-
-
-POSTGRES_LINK = getattr(fabfile, 'POSTGRES_LINK',
-                        '/etc/postgresql/9.1/main/pg_hba.conf')
-POSTGRES_FILEPATH = getattr(fabfile, 'POSTGRES_FILEPATH', 'deploy/postgres.conf')
-
-
-dependency_template = {
-    'base': [],
-    'exclude': ['']
-}
-
+dependency_template = {'base': [], 'exclude': ['']}
 DEVELOPMENT_DEPENDENCIES = dependency_template.copy()
 STAGING_DEPENDENCIES = dependency_template.copy()
 PRODUCTION_DEPENDENCIES = dependency_template.copy()
@@ -48,7 +38,7 @@ ENVIRONMENT = {
         'installer': 'brew install {args} {deps}'
     },
     'STAGING': {
-        'user': 'www-data',
+        'user': PROJECT_NAME,
         'hosts': ('{}.staging'.format(PROJECT_NAME),),
         'directory': join('/var/www/', PROJECT_NAME),
         'environment': 'staging',
@@ -59,7 +49,7 @@ ENVIRONMENT = {
         'installer': 'apt-get -y {args} install {deps}'
     },
     'PRODUCTION': {
-        'user': 'root',
+        'user': PROJECT_NAME,
         'hosts': ('{}.com'.format(PROJECT_NAME)),
         'directory': join('/var/www/', PROJECT_NAME),
         'environment': 'production',
@@ -78,3 +68,9 @@ def update_environment(new_env):
             ENVIRONMENT[k].update(v)
 
 update_environment(getattr(fabfile, 'ENVIRONMENT', ENVIRONMENT))
+
+
+def check(value=None, text=None, key=None, default=None, validate=None):
+    if not validate:
+        validate = r'^.+$'
+    return value if value else prompt(text, key, default, validate)

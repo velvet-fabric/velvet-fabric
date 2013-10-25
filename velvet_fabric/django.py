@@ -2,21 +2,12 @@ import sys
 import imp
 from fabric.api import *
 from fabric.colors import green
+from fabric.utils import error
 
+from .overrides import run
 from .server import virtualenv
-from .db import create_postgres_db, create_mysql_db
-from . import PROJECT_NAME, PROJECT_PATH
-
-
-@task
-def init():
-    create_schemas()
-    syncdb()
-
-    if env.environment is 'development':
-        set_fake_pw()
-
-    print(green('initialize'))
+from .db import mysql_create, postgres_create
+from . import PROJECT_PATH, PROJECT_NAME, check
 
 
 def get_schemas():
@@ -24,13 +15,15 @@ def get_schemas():
         # print env.settings_module
 
         # # since it's dynamic, it's a fiasco the fabric propousal
-        # os.environ.setdefault("DJANGO_SETTINGS_MODULE", PROJECT_NAME+'.'+env.settings_module)
+        # os.environ.setdefault("DJANGO_SETTINGS_MODULE", PROJECT_NAME+'.' +
+        #                       env.settings_module)
         # django.settings_module(PROJECT_NAME+'.'+env.settings_module)
         # from django.conf import settings
 
         sys.path.append(PROJECT_PATH+'/'+PROJECT_NAME)
         fp, pathname, description = imp.find_module(env.settings_module)
-        settings = imp.load_module(env.settings_module, fp, pathname, description)
+        settings = imp.load_module(env.settings_module, fp, pathname,
+                                   description)
 
         return settings.DATABASES
 
@@ -47,19 +40,32 @@ def create_schemas():
     print(green('ALL SCHEMAS CREATED'))
 
 
+def is_schema_misconfigured(schema={}):
+    for i in ['ENGINE', 'NAME', 'USER', 'PASSWORD', 'HOST', 'PORT']:
+        if not i in schema or schema[i] is None:
+            error('schema[{}] misconfigured'.format(i))
+            return True
+
+    return False
+
+
 @task
-def create_schema(name):
+def create_schema(name=None):
+    name = check(name, 'name: Which schema form settings.DATABASES?',
+                 default='default')
     schema = get_schemas()[name]
 
     if 'sqlite' in schema['ENGINE']:
-        print(green('schema for sqlite is ready'))
         return
 
     if 'postgres' in schema['ENGINE']:
-        create_postgres_db(schema)
+        postgres_create(name=schema['NAME'], user=schema['USER'],
+                        password=schema['PASSWORD'])
 
     elif 'mysql' in schema['ENGINE']:
-        create_mysql_db(schema)
+        mysql_create(name=schema['NAME'], user=schema['USER'],
+                     password=schema['PASSWORD'], host=schema['HOST'],
+                     port=schema['PORT'])
 
 
 @task
@@ -70,7 +76,8 @@ def set_fake_pw(password='admin'):
     fake = raw_input('Password (leave blank to use \'admin\'):')
 
     with virtualenv():
-        run('python manage.py set_fake_passwords --password={0}'.format(fake if fake != '' else 'admin'))
+        run('python manage.py set_fake_passwords --password={0}'
+            .format(fake if fake != '' else 'admin'))
 
     print(green('set_fake_pw'))
 
@@ -80,7 +87,6 @@ def syncdb():
     """
     Executes 'syncdb' and 'migrate' commands
     """
-
     with virtualenv():
         run('python manage.py syncdb --noinput')
         run('python manage.py migrate')
