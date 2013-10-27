@@ -116,7 +116,7 @@ def postgres_drop(name=None, user=None):
     name = check(name, 'name: The dabatase name to create.')
     user = check(user, 'user: the user to grant privileges.')
 
-    i_postgres_run((
+    postgres_run((
         "drop database if exists {name}",
         "drop role if exists {user}"
     ), {'name': name, 'user': user})
