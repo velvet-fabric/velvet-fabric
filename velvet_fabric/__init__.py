@@ -12,7 +12,8 @@ PSQL_RUN = getattr(fabfile, 'PSQL_RUN',
 WRAPPER_PATH = getattr(fabfile, 'WRAPPER_PATH',
                        'source /usr/local/bin/virtualenvwrapper.sh')
 
-SED_RUN = getattr(fabfile, 'SED_RUN', "sed -i 's/{query}/{replace}/' {file_path}")
+SED_RUN = getattr(fabfile, 'SED_RUN',
+                  "sed -i 's/{query}/{replace}/' {file_path}")
 TAIL_RUN = getattr(fabfile, 'TAIL_RUN', 'tail -f {file_path}')
 PIP_RUN = getattr(fabfile, 'PIP_RUN', 'pip install {args} -r {requirements}')
 
@@ -21,7 +22,8 @@ DEVELOPMENT_DEPENDENCIES = dependency_template.copy()
 STAGING_DEPENDENCIES = dependency_template.copy()
 PRODUCTION_DEPENDENCIES = dependency_template.copy()
 
-DEVELOPMENT_DEPENDENCIES.update(getattr(fabfile, 'DEVELOPMENT_DEPENDENCIES', {}))
+DEVELOPMENT_DEPENDENCIES.update(getattr(fabfile, 'DEVELOPMENT_DEPENDENCIES',
+                                {}))
 STAGING_DEPENDENCIES.update(getattr(fabfile, 'STAGING_DEPENDENCIES', {}))
 PRODUCTION_DEPENDENCIES.update(getattr(fabfile, 'PRODUCTION_DEPENDENCIES', {}))
 
