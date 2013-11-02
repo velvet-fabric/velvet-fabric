@@ -5,6 +5,8 @@ from fabric.operations import prompt
 
 PROJECT_PATH = getattr(fabfile, 'PROJECT_PATH')
 PROJECT_NAME = getattr(fabfile, 'PROJECT_NAME')
+BASHRC_HOME = getattr(fabfile, 'BASHRC_HOME', '~/.bashrc')
+WORKON_HOME = getattr(fabfile, 'WORKON_HOME', '/var/www/.virtualenvs')
 MYSQL_RUN = getattr(fabfile, 'MYSQL_RUN',
                     'echo "{actions}" | mysql -u root -p{db_password}')
 PSQL_RUN = getattr(fabfile, 'PSQL_RUN',
@@ -35,7 +37,7 @@ ENVIRONMENT = {
         'environment': 'development',
         'requirements': 'requirements/development.txt',
         'settings_module': 'settings',
-        'activate': 'workon {}'.format(PROJECT_NAME),
+        'activate': '/var/www/.virtualenvs/{}/bin/activate'.format(PROJECT_NAME),
         'dependencies': DEVELOPMENT_DEPENDENCIES,
         'installer': 'brew install {args} {deps}'
     },
@@ -46,7 +48,7 @@ ENVIRONMENT = {
         'environment': 'staging',
         'requirements': 'requirements/staging.txt',
         'settings_module': 'settings_staging',
-        'activate': 'workon {}'.format(PROJECT_NAME),
+        'activate': '/var/www/.virtualenvs/{}/bin/activate'.format(PROJECT_NAME),
         'dependencies': STAGING_DEPENDENCIES,
         'installer': 'apt-get -y {args} install {deps}'
     },
@@ -57,7 +59,7 @@ ENVIRONMENT = {
         'environment': 'production',
         'requirements': 'requirements/production.txt',
         'settings_module': 'settings_production',
-        'activate': 'workon {}'.format(PROJECT_NAME),
+        'activate': '/var/www/.virtualenvs/{}/bin/activate'.format(PROJECT_NAME),
         'dependencies': PRODUCTION_DEPENDENCIES,
         'installer': 'apt-get -y {args} install {deps}'
     }
