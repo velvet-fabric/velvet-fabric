@@ -71,6 +71,22 @@ def upgrade_requirements():
     install_requirements('--upgrade')
 
 
+@task
+def install_sys_requirements(args=''):
+    """
+    Install requirements system-wide
+    """
+    sudo(PIP_RUN.format(args=args, requirements=env.sys_requirements))
+
+
+@task
+def upgrade_sys_requirements():
+    """
+    Upgrade requirements system-wide
+    """
+    install_sys_requirements('--upgrade')
+
+
 def get_os():
     if 'os' not in env or not env.os:
         env.os = run('uname -s')

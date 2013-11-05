@@ -29,6 +29,18 @@ DEVELOPMENT_DEPENDENCIES.update(getattr(fabfile, 'DEVELOPMENT_DEPENDENCIES',
 STAGING_DEPENDENCIES.update(getattr(fabfile, 'STAGING_DEPENDENCIES', {}))
 PRODUCTION_DEPENDENCIES.update(getattr(fabfile, 'PRODUCTION_DEPENDENCIES', {}))
 
+
+# SYS_REQUIREMENTS defines pip requirements for the whole system, useful for
+# installing uWSGI system-wide
+#
+# Example:
+# PRODUCTION_SYS_REQUIREMENTS = [
+#     'uwsgi'
+# ]
+DEVELOPMENT_SYS_REQUIREMENTS = getattr(fabfile, 'DEVELOPMENT_SYS_REQUIREMENTS', [])
+STAGING_SYS_REQUIREMENTS = getattr(fabfile, 'STAGING_SYS_REQUIREMENTS', [])
+PRODUCTION_SYS_REQUIREMENTS = getattr(fabfile, 'PRODUCTION_SYS_REQUIREMENTS', [])
+
 ENVIRONMENT = {
     'DEVELOPMENT': {
         'user': os.environ['USER'],
@@ -39,6 +51,7 @@ ENVIRONMENT = {
         'settings_module': 'settings',
         'activate': '/var/www/.virtualenvs/{}/bin/activate'.format(PROJECT_NAME),
         'dependencies': DEVELOPMENT_DEPENDENCIES,
+        'sys_requirements': DEVELOPMENT_SYS_REQUIREMENTS,
         'installer': 'brew install {args} {deps}'
     },
     'STAGING': {
@@ -50,6 +63,7 @@ ENVIRONMENT = {
         'settings_module': 'settings_staging',
         'activate': '/var/www/.virtualenvs/{}/bin/activate'.format(PROJECT_NAME),
         'dependencies': STAGING_DEPENDENCIES,
+        'sys_requirements': STAGING_SYS_REQUIREMENTS,
         'installer': 'apt-get -y {args} install {deps}'
     },
     'PRODUCTION': {
@@ -61,6 +75,7 @@ ENVIRONMENT = {
         'settings_module': 'settings_production',
         'activate': '/var/www/.virtualenvs/{}/bin/activate'.format(PROJECT_NAME),
         'dependencies': PRODUCTION_DEPENDENCIES,
+        'sys_requirements': PRODUCTION_SYS_REQUIREMENTS,
         'installer': 'apt-get -y {args} install {deps}'
     }
 }
